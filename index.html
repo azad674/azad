@@ -1,29 +1,13 @@
-<!-- Paste this code into an HTML/JavaScript gadget or inside a blog post -->
+<div id="pro-tts-widget" style="max-width:500px;margin:20px auto;padding:20px;border-radius:12px;box-shadow:0 0 20px rgba(0,0,0,0.15);background:#fff;font-family:sans-serif">
+  <h3>🔊 AI Text-to-Speech Reader</h3>
 
-<div id="tts-tool" style="max-width:400px;margin:20px auto;padding:20px;border-radius:12px;box-shadow:0 0 15px rgba(0,0,0,0.2);font-family:sans-serif;background:#fff">
-  <h3 style="margin-bottom:10px;">🔊 Text to Speech Tool</h3>
-  
-  <textarea id="tts-text" placeholder="Yahan text likho ya copy karo..." rows="5" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;resize:none"></textarea>
+  <textarea id="tts-text" placeholder="Text will auto-load from post..." rows="5" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;resize:none"></textarea>
 
-  <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px;">
-    <select id="tts-language" style="padding:8px;border-radius:8px;">
-      <option value="en-US">English (US)</option>
-      <option value="en-GB">English (UK)</option>
-      <option value="hi-IN">Hindi (India)</option>
-      <option value="ta-IN">Tamil</option>
-      <option value="bn-IN">Bengali</option>
-      <option value="ml-IN">Malayalam</option>
-      <option value="ur-IN">Urdu</option>
-    </select>
-
-    <select id="tts-voice" style="padding:8px;border-radius:8px;">
-      <option value="">Loading voices...</option>
-    </select>
-
-    <button onclick="speakText()" style="background:#007bff;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer">▶️ Speak</button>
-    <button onclick="pauseSpeech()" style="background:#ffc107;color:#000;padding:10px;border:none;border-radius:8px;cursor:pointer">⏸️ Pause</button>
-    <button onclick="resumeSpeech()" style="background:#28a745;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer">▶️ Resume</button>
-    <button onclick="stopSpeech()" style="background:#dc3545;color:#fff;padding:10px;border:none;border-radius:8px;cursor:pointer">⏹️ Stop</button>
+  <div style="margin-top:10px">
+    <select id="tts-voice" style="width:100%;padding:10px;border-radius:8px;margin-bottom:10px;"></select>
+    
+    <button onclick="playVoice()" style="padding:10px;width:100%;border:none;background:#007bff;color:white;border-radius:8px;margin-bottom:10px;">▶️ Play Voice</button>
+    <button onclick="downloadMP3()" style="padding:10px;width:100%;border:none;background:#28a745;color:white;border-radius:8px;margin-bottom:10px;">⬇️ Download MP3</button>
   </div>
 </div>
 
@@ -31,59 +15,80 @@
 let voices = [];
 let utterance = new SpeechSynthesisUtterance();
 
+function detectLanguage(text) {
+  // Simple detection (for demo)
+  if (/[\u0900-\u097F]/.test(text)) return "hi-IN"; // Hindi
+  if (/[\u0600-\u06FF]/.test(text)) return "ur-IN"; // Urdu
+  return "en-US"; // Default English
+}
+
 function loadVoices() {
-  voices = window.speechSynthesis.getVoices();
+  voices = speechSynthesis.getVoices();
   const voiceSelect = document.getElementById("tts-voice");
-  voiceSelect.innerHTML = '';
+  voiceSelect.innerHTML = "";
 
   voices.forEach((voice, i) => {
     const option = document.createElement("option");
     option.value = i;
-    option.textContent = `${voice.name} (${voice.lang}) ${voice.gender || ''}`;
+    option.textContent = `${voice.name} (${voice.lang})`;
     voiceSelect.appendChild(option);
   });
 }
 
-if (typeof speechSynthesis !== "undefined") {
-  speechSynthesis.onvoiceschanged = loadVoices;
-}
+speechSynthesis.onvoiceschanged = loadVoices;
 
-function speakText() {
-  const text = document.getElementById("tts-text").value;
-  const lang = document.getElementById("tts-language").value;
+function playVoice() {
+  const text = document.getElementById("tts-text").value.trim();
   const voiceIndex = document.getElementById("tts-voice").value;
-
-  if (text.trim() === "") {
-    alert("Text daalo!");
-    return;
-  }
+  if (!text) return alert("No text to speak!");
 
   utterance.text = text;
-  utterance.lang = lang;
-
-  if (voices[voiceIndex]) {
-    utterance.voice = voices[voiceIndex];
-  }
-
-  speechSynthesis.cancel(); // Stop previous
+  utterance.lang = detectLanguage(text);
+  if (voices[voiceIndex]) utterance.voice = voices[voiceIndex];
+  speechSynthesis.cancel();
   speechSynthesis.speak(utterance);
 }
 
-function pauseSpeech() {
-  if (speechSynthesis.speaking && !speechSynthesis.paused) {
-    speechSynthesis.pause();
+// Auto-load post text if available
+window.addEventListener("load", () => {
+  const postText = document.querySelector('.post-body')?.innerText || '';
+  if (postText) {
+    document.getElementById("tts-text").value = postText.slice(0, 5000); // Limit to 5000 chars
   }
-}
+});
 
-function resumeSpeech() {
-  if (speechSynthesis.paused) {
-    speechSynthesis.resume();
-  }
-}
+// MP3 Download with external API
+function downloadMP3() {
+  const text = document.getElementById("tts-text").value.trim();
+  if (!text) return alert("No text to convert!");
 
-function stopSpeech() {
-  if (speechSynthesis.speaking) {
-    speechSynthesis.cancel();
-  }
+  const voiceLang = detectLanguage(text);
+  const apiKey = "YOUR_API_KEY_HERE"; // 🛑 Replace with your ttsMP3.com or other service API key
+
+  const formData = new URLSearchParams();
+  formData.append("msg", text);
+  formData.append("lang", voiceLang);
+  formData.append("source", "ttsmp3");
+
+  fetch("https://api.voicerss.org/?key=" + apiKey + "&hl=" + voiceLang + "&src=" + encodeURIComponent(text))
+    .then(res => {
+      if (res.ok) {
+        return res.blob();
+      } else {
+        alert("MP3 generation failed. Check API key or text length.");
+        throw new Error("Failed");
+      }
+    })
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "speech.mp3";
+      a.click();
+      URL.revokeObjectURL(url);
+    })
+    .catch(err => {
+      console.error(err);
+    });
 }
 </script>
