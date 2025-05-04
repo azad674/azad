@@ -1,13 +1,23 @@
-<div id="pro-tts-widget" style="max-width:500px;margin:20px auto;padding:20px;border-radius:12px;box-shadow:0 0 20px rgba(0,0,0,0.15);background:#fff;font-family:sans-serif">
-  <h3>🔊 AI Text-to-Speech Reader</h3>
+<div id="pro-tts-widget" style="max-width:600px;margin:20px auto;padding:20px;border-radius:16px;box-shadow:0 4px 30px rgba(0,0,0,0.1);background:#f9f9f9;font-family:'Segoe UI', sans-serif">
+  <h2 style="text-align:center;color:#333;margin-bottom:15px">🔊 AI Text-to-Speech Reader</h2>
 
-  <textarea id="tts-text" placeholder="Text will auto-load from post..." rows="5" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;resize:none"></textarea>
+  <textarea id="tts-text" placeholder="Text will auto-load from post..." rows="6" style="width:100%;padding:12px;border-radius:10px;border:1px solid #ccc;resize:vertical;font-size:15px;"></textarea>
 
-  <div style="margin-top:10px">
-    <select id="tts-voice" style="width:100%;padding:10px;border-radius:8px;margin-bottom:10px;"></select>
-    
-    <button onclick="playVoice()" style="padding:10px;width:100%;border:none;background:#007bff;color:white;border-radius:8px;margin-bottom:10px;">▶️ Play Voice</button>
-    <button onclick="downloadMP3()" style="padding:10px;width:100%;border:none;background:#28a745;color:white;border-radius:8px;margin-bottom:10px;">⬇️ Download MP3</button>
+  <div style="margin-top:15px">
+    <label for="languageSelect"><strong>🌐 Select Language:</strong></label>
+    <select id="languageSelect" style="width:100%;padding:10px;border-radius:10px;margin-bottom:12px;font-size:15px;"></select>
+
+    <label for="tts-voice"><strong>🎭 Select Voice (Gender + Emotion):</strong></label>
+    <select id="tts-voice" style="width:100%;padding:10px;border-radius:10px;margin-bottom:12px;font-size:15px;"></select>
+
+    <label for="rateControl"><strong>⏩ Speed:</strong></label>
+    <input type="range" id="rateControl" min="0.5" max="2" step="0.1" value="1" style="width:100%;margin-bottom:10px">
+
+    <label for="volumeControl"><strong>🔊 Volume:</strong></label>
+    <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="1" style="width:100%;margin-bottom:15px">
+
+    <button onclick="playVoice()" style="padding:12px;width:100%;border:none;background:#007bff;color:white;border-radius:10px;font-size:16px;margin-bottom:10px;">▶️ Play Voice</button>
+    <button onclick="downloadMP3()" style="padding:12px;width:100%;border:none;background:#28a745;color:white;border-radius:10px;font-size:16px;">⬇️ Download MP3</button>
   </div>
 </div>
 
@@ -16,68 +26,84 @@ let voices = [];
 let utterance = new SpeechSynthesisUtterance();
 
 function detectLanguage(text) {
-  // Simple detection (for demo)
-  if (/[\u0900-\u097F]/.test(text)) return "hi-IN"; // Hindi
-  if (/[\u0600-\u06FF]/.test(text)) return "ur-IN"; // Urdu
-  return "en-US"; // Default English
+  if (/[\u0900-\u097F]/.test(text)) return "hi-IN";
+  if (/[\u0600-\u06FF]/.test(text)) return "ur-IN";
+  return document.getElementById("languageSelect").value || "en-US";
 }
 
 function loadVoices() {
   voices = speechSynthesis.getVoices();
+  const langSelect = document.getElementById("languageSelect");
   const voiceSelect = document.getElementById("tts-voice");
+  const usedLangs = new Set();
+  langSelect.innerHTML = "";
   voiceSelect.innerHTML = "";
 
   voices.forEach((voice, i) => {
+    if (!usedLangs.has(voice.lang)) {
+      const langOption = document.createElement("option");
+      langOption.value = voice.lang;
+      langOption.textContent = voice.lang;
+      langSelect.appendChild(langOption);
+      usedLangs.add(voice.lang);
+    }
+  });
+
+  populateVoices();
+}
+
+function populateVoices() {
+  const selectedLang = document.getElementById("languageSelect").value;
+  const voiceSelect = document.getElementById("tts-voice");
+  voiceSelect.innerHTML = "";
+
+  voices.filter(v => v.lang === selectedLang).forEach((voice, i) => {
     const option = document.createElement("option");
-    option.value = i;
-    option.textContent = `${voice.name} (${voice.lang})`;
+    const gender = /female/i.test(voice.name) ? "♀️ Female" : /male/i.test(voice.name) ? "♂️ Male" : "🎙️ Voice";
+    const emotion = /soft|warm|hot|slow|fast/i.test(voice.name) ? " (Emotive)" : "";
+    option.value = voices.indexOf(voice);
+    option.textContent = `${gender}: ${voice.name}${emotion}`;
     voiceSelect.appendChild(option);
   });
 }
 
 speechSynthesis.onvoiceschanged = loadVoices;
+document.getElementById("languageSelect").addEventListener("change", populateVoices);
 
 function playVoice() {
   const text = document.getElementById("tts-text").value.trim();
   const voiceIndex = document.getElementById("tts-voice").value;
+  const rate = document.getElementById("rateControl").value;
+  const volume = document.getElementById("volumeControl").value;
   if (!text) return alert("No text to speak!");
 
   utterance.text = text;
   utterance.lang = detectLanguage(text);
+  utterance.rate = parseFloat(rate);
+  utterance.volume = parseFloat(volume);
   if (voices[voiceIndex]) utterance.voice = voices[voiceIndex];
   speechSynthesis.cancel();
   speechSynthesis.speak(utterance);
 }
 
-// Auto-load post text if available
 window.addEventListener("load", () => {
   const postText = document.querySelector('.post-body')?.innerText || '';
   if (postText) {
-    document.getElementById("tts-text").value = postText.slice(0, 5000); // Limit to 5000 chars
+    document.getElementById("tts-text").value = postText.slice(0, 5000);
   }
 });
 
-// MP3 Download with external API
 function downloadMP3() {
   const text = document.getElementById("tts-text").value.trim();
   if (!text) return alert("No text to convert!");
 
   const voiceLang = detectLanguage(text);
-  const apiKey = "YOUR_API_KEY_HERE"; // 🛑 Replace with your ttsMP3.com or other service API key
-
-  const formData = new URLSearchParams();
-  formData.append("msg", text);
-  formData.append("lang", voiceLang);
-  formData.append("source", "ttsmp3");
+  const apiKey = "YOUR_API_KEY_HERE";
 
   fetch("https://api.voicerss.org/?key=" + apiKey + "&hl=" + voiceLang + "&src=" + encodeURIComponent(text))
     .then(res => {
-      if (res.ok) {
-        return res.blob();
-      } else {
-        alert("MP3 generation failed. Check API key or text length.");
-        throw new Error("Failed");
-      }
+      if (res.ok) return res.blob();
+      else throw new Error("MP3 generation failed");
     })
     .then(blob => {
       const url = URL.createObjectURL(blob);
@@ -89,6 +115,13 @@ function downloadMP3() {
     })
     .catch(err => {
       console.error(err);
+      alert("MP3 generation failed. Please check API key and text size.");
     });
 }
 </script>
+
+<!-- SEO Meta Tags -->
+<meta name="description" content="Convert blog posts to voice instantly. Multilingual, SEO-friendly, AdSense-safe AI Text-to-Speech reader with emotive male/female voices and MP3 download.">
+<meta name="keywords" content="text to speech, mp3 download, blogger voice tool, AI voice, multilingual speech, voice generator, professional TTS">
+<meta name="author" content="TTS Voice Generator">
+<!-- End SEO -->
