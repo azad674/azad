@@ -1,23 +1,17 @@
-<div id="pro-tts-widget" style="max-width:600px;margin:20px auto;padding:20px;border-radius:16px;box-shadow:0 4px 30px rgba(0,0,0,0.1);background:#f9f9f9;font-family:'Segoe UI', sans-serif">
-  <h2 style="text-align:center;color:#333;margin-bottom:15px">🔊 AI Text-to-Speech Reader</h2>
+<div id="pro-tts-widget" style="max-width:700px;margin:30px auto;padding:24px;border-radius:20px;box-shadow:0 6px 40px rgba(0,0,0,0.1);background:#ffffff;font-family:'Segoe UI', sans-serif">
+  <h2 style="text-align:center;color:#222;margin-bottom:20px;font-size:22px">🎤 AI Text-to-Speech Reader</h2>
 
-  <textarea id="tts-text" placeholder="Text will auto-load from post..." rows="6" style="width:100%;padding:12px;border-radius:10px;border:1px solid #ccc;resize:vertical;font-size:15px;"></textarea>
+  <textarea id="tts-text" placeholder="Text will auto-load from post..." rows="6" style="width:100%;padding:14px;border-radius:12px;border:1px solid #ccc;resize:vertical;font-size:16px;"></textarea>
 
-  <div style="margin-top:15px">
-    <label for="languageSelect"><strong>🌐 Select Language:</strong></label>
-    <select id="languageSelect" style="width:100%;padding:10px;border-radius:10px;margin-bottom:12px;font-size:15px;"></select>
+  <div style="margin-top:20px">
+    <label for="languageSelect"><strong>🌍 Language + Region:</strong></label>
+    <select id="languageSelect" style="width:100%;padding:12px;border-radius:12px;margin-bottom:15px;font-size:16px;"></select>
 
-    <label for="tts-voice"><strong>🎭 Select Voice (Gender + Emotion):</strong></label>
-    <select id="tts-voice" style="width:100%;padding:10px;border-radius:10px;margin-bottom:12px;font-size:15px;"></select>
+    <label for="tts-voice"><strong>🎙️ Select Voice (Male/Female):</strong></label>
+    <select id="tts-voice" style="width:100%;padding:12px;border-radius:12px;margin-bottom:20px;font-size:16px;"></select>
 
-    <label for="rateControl"><strong>⏩ Speed:</strong></label>
-    <input type="range" id="rateControl" min="0.5" max="2" step="0.1" value="1" style="width:100%;margin-bottom:10px">
-
-    <label for="volumeControl"><strong>🔊 Volume:</strong></label>
-    <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="1" style="width:100%;margin-bottom:15px">
-
-    <button onclick="playVoice()" style="padding:12px;width:100%;border:none;background:#007bff;color:white;border-radius:10px;font-size:16px;margin-bottom:10px;">▶️ Play Voice</button>
-    <button onclick="downloadMP3()" style="padding:12px;width:100%;border:none;background:#28a745;color:white;border-radius:10px;font-size:16px;">⬇️ Download MP3</button>
+    <button onclick="playVoice()" style="padding:14px;width:100%;border:none;background:#007bff;color:white;border-radius:12px;font-size:17px;margin-bottom:12px;">▶️ Play Voice</button>
+    <button onclick="downloadMP3()" style="padding:14px;width:100%;border:none;background:#28a745;color:white;border-radius:12px;font-size:17px;">⬇️ Download MP3</button>
   </div>
 </div>
 
@@ -36,14 +30,16 @@ function loadVoices() {
   const langSelect = document.getElementById("languageSelect");
   const voiceSelect = document.getElementById("tts-voice");
   const usedLangs = new Set();
+
   langSelect.innerHTML = "";
   voiceSelect.innerHTML = "";
 
-  voices.forEach((voice, i) => {
+  voices.forEach(voice => {
+    const langDisplay = `${voice.lang} (${new Intl.DisplayNames(['en'], { type: 'language' }).of(voice.lang.split('-')[0])})`;
     if (!usedLangs.has(voice.lang)) {
       const langOption = document.createElement("option");
       langOption.value = voice.lang;
-      langOption.textContent = voice.lang;
+      langOption.textContent = langDisplay;
       langSelect.appendChild(langOption);
       usedLangs.add(voice.lang);
     }
@@ -57,12 +53,11 @@ function populateVoices() {
   const voiceSelect = document.getElementById("tts-voice");
   voiceSelect.innerHTML = "";
 
-  voices.filter(v => v.lang === selectedLang).forEach((voice, i) => {
-    const option = document.createElement("option");
+  voices.filter(v => v.lang === selectedLang).forEach(voice => {
     const gender = /female/i.test(voice.name) ? "♀️ Female" : /male/i.test(voice.name) ? "♂️ Male" : "🎙️ Voice";
-    const emotion = /soft|warm|hot|slow|fast/i.test(voice.name) ? " (Emotive)" : "";
+    const option = document.createElement("option");
     option.value = voices.indexOf(voice);
-    option.textContent = `${gender}: ${voice.name}${emotion}`;
+    option.textContent = `${gender}: ${voice.name}`;
     voiceSelect.appendChild(option);
   });
 }
@@ -73,15 +68,13 @@ document.getElementById("languageSelect").addEventListener("change", populateVoi
 function playVoice() {
   const text = document.getElementById("tts-text").value.trim();
   const voiceIndex = document.getElementById("tts-voice").value;
-  const rate = document.getElementById("rateControl").value;
-  const volume = document.getElementById("volumeControl").value;
+
   if (!text) return alert("No text to speak!");
 
   utterance.text = text;
   utterance.lang = detectLanguage(text);
-  utterance.rate = parseFloat(rate);
-  utterance.volume = parseFloat(volume);
   if (voices[voiceIndex]) utterance.voice = voices[voiceIndex];
+
   speechSynthesis.cancel();
   speechSynthesis.speak(utterance);
 }
@@ -98,7 +91,7 @@ function downloadMP3() {
   if (!text) return alert("No text to convert!");
 
   const voiceLang = detectLanguage(text);
-  const apiKey = "YOUR_API_KEY_HERE";
+  const apiKey = "YOUR_API_KEY_HERE"; // Replace with your VoiceRSS API key
 
   fetch("https://api.voicerss.org/?key=" + apiKey + "&hl=" + voiceLang + "&src=" + encodeURIComponent(text))
     .then(res => {
@@ -119,9 +112,3 @@ function downloadMP3() {
     });
 }
 </script>
-
-<!-- SEO Meta Tags -->
-<meta name="description" content="Convert blog posts to voice instantly. Multilingual, SEO-friendly, AdSense-safe AI Text-to-Speech reader with emotive male/female voices and MP3 download.">
-<meta name="keywords" content="text to speech, mp3 download, blogger voice tool, AI voice, multilingual speech, voice generator, professional TTS">
-<meta name="author" content="TTS Voice Generator">
-<!-- End SEO -->
