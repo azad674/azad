@@ -1,0 +1,119 @@
+<div id="pro-tts-widget" style="max-width:700px;margin:30px auto;padding:24px;border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,0.08);background:#ffffff;font-family:'Segoe UI', sans-serif">
+  <h2 style="text-align:center;color:#222;margin-bottom:20px">🗣️ AI Text-to-Speech Reader</h2>
+
+  <textarea id="tts-text" placeholder="Paste or auto-load blog text..." rows="6" style="width:100%;padding:14px;border-radius:10px;border:1px solid #ccc;resize:vertical;font-size:16px;"></textarea>
+
+  <div style="margin-top:20px">
+    <label for="languageSelect"><strong>🌍 Select Language (with Region):</strong></label>
+    <select id="languageSelect" style="width:100%;padding:12px;border-radius:10px;margin-bottom:15px;font-size:16px;"></select>
+
+    <label for="tts-voice"><strong>🧑‍🎤 Select Voice (Male/Female):</strong></label>
+    <select id="tts-voice" style="width:100%;padding:12px;border-radius:10px;margin-bottom:20px;font-size:16px;"></select>
+
+    <button onclick="playVoice()" style="padding:14px;width:100%;border:none;background:#007bff;color:white;border-radius:10px;font-size:17px;margin-bottom:12px;">▶️ Play Voice</button>
+    <button onclick="downloadMP3()" style="padding:14px;width:100%;border:none;background:#28a745;color:white;border-radius:10px;font-size:17px;">⬇️ Download MP3</button>
+  </div>
+</div>
+
+<script>
+let voices = [];
+let utterance = new SpeechSynthesisUtterance();
+
+function detectLanguage(text) {
+  if (/[\u0900-\u097F]/.test(text)) return "hi-IN";
+  if (/[\u0600-\u06FF]/.test(text)) return "ur-IN";
+  return document.getElementById("languageSelect").value || "en-US";
+}
+
+function getFullLanguageName(code) {
+  try {
+    const regionNames = new Intl.DisplayNames(['en'], {type: 'language'});
+    const regionDisplay = new Intl.DisplayNames(['en'], {type: 'region'});
+    const [lang, region] = code.split('-');
+    return `${regionNames.of(lang)} (${regionDisplay.of(region)})`;
+  } catch (e) {
+    return code;
+  }
+}
+
+function loadVoices() {
+  voices = speechSynthesis.getVoices();
+  const langSelect = document.getElementById("languageSelect");
+  const voiceSelect = document.getElementById("tts-voice");
+  const usedLangs = new Set();
+  langSelect.innerHTML = "";
+  voiceSelect.innerHTML = "";
+
+  voices.forEach((voice) => {
+    if (!usedLangs.has(voice.lang)) {
+      const langOption = document.createElement("option");
+      langOption.value = voice.lang;
+      langOption.textContent = getFullLanguageName(voice.lang);
+      langSelect.appendChild(langOption);
+      usedLangs.add(voice.lang);
+    }
+  });
+
+  populateVoices();
+}
+
+function populateVoices() {
+  const selectedLang = document.getElementById("languageSelect").value;
+  const voiceSelect = document.getElementById("tts-voice");
+  voiceSelect.innerHTML = "";
+
+  voices.filter(v => v.lang === selectedLang).forEach((voice) => {
+    const option = document.createElement("option");
+    const gender = /female/i.test(voice.name) ? "♀️ Female" : /male/i.test(voice.name) ? "♂️ Male" : "🎙️ Neutral";
+    option.value = voices.indexOf(voice);
+    option.textContent = `${gender}: ${voice.name}`;
+    voiceSelect.appendChild(option);
+  });
+}
+
+speechSynthesis.onvoiceschanged = loadVoices;
+document.getElementById("languageSelect").addEventListener("change", populateVoices);
+
+function playVoice() {
+  const text = document.getElementById("tts-text").value.trim();
+  const voiceIndex = document.getElementById("tts-voice").value;
+  if (!text) return alert("No text to speak!");
+
+  utterance.text = text;
+  utterance.lang = detectLanguage(text);
+  if (voices[voiceIndex]) utterance.voice = voices[voiceIndex];
+
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utterance);
+}
+
+window.addEventListener("load", () => {
+  const postText = document.querySelector('.post-body')?.innerText || '';
+  if (postText) {
+    document.getElementById("tts-text").value = postText.slice(0, 5000);
+  }
+});
+
+function downloadMP3() {
+  const text = document.getElementById("tts-text").value.trim();
+  if (!text) return alert("No text to convert!");
+
+  const voiceLang = detectLanguage(text);
+  const apiKey = fd75d9ab0b4547e78780c0474f982991; // Replace with your VoiceRSS key
+
+  fetch("https://api.voicerss.org/?key=" + apiKey + "&hl=" + voiceLang + "&src=" + encodeURIComponent(text))
+    .then(res => res.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "speech.mp3";
+      a.click();
+      URL.revokeObjectURL(url);
+    })
+    .catch(err => {
+      console.error(err);
+      alert("MP3 generation failed. Please check API key and try again.");
+    });
+}
+</script>
